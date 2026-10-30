@@ -27,7 +27,7 @@ Doanh nghiệp tự tạo minigame (vòng quay, lật thẻ, cào, mở hộp qu
   - `lib/db.mjs` – Postgres trên Netlify; SQLite khi chạy thử local
   - `lib/util.mjs` – băm mật khẩu (scrypt), token ký HMAC, tiện ích
 - **Database**: Netlify Database (Postgres). Bảng tạo bằng migration trong `netlify/database/migrations/` – Netlify tự áp dụng khi deploy.
-- **Biến môi trường bắt buộc**: `APP_SECRET` (chuỗi ngẫu nhiên dài, dùng ký phiên đăng nhập).
+- **Khoá bảo mật**: tự tạo lần chạy đầu và lưu trong bảng `app_settings`. Có thể ghi đè bằng biến môi trường `APP_SECRET`.
 
 ## Chạy thử trên máy
 

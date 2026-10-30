@@ -2,7 +2,7 @@
 import { query, tx } from './db.mjs';
 import {
   HttpError, json, readJson, getCookie, sessionCookie, signToken, verifyToken,
-  hashPassword, verifyPassword, newId, newPrizeCode, now, normalizePhone, isEmail, str, slugify,
+  hashPassword, verifyPassword, newId, newPrizeCode, now, normalizePhone, isEmail, str, slugify, setRuntimeSecret,
 } from './util.mjs';
 
 export const GAME_TYPES = ['wheel', 'flip', 'scratch', 'giftbox'];
@@ -22,7 +22,28 @@ const route = (method, pattern, handler) => {
   routes.push({ method, re, keys, handler });
 };
 
+let secretReady = null;
+async function ensureSecret() {
+  if (process.env.APP_SECRET) return;
+  const { rows } = await query("SELECT value FROM app_settings WHERE key = 'session_secret'");
+  if (rows[0]) return setRuntimeSecret(rows[0].value);
+  const fresh = (await import('node:crypto')).randomBytes(32).toString('base64url');
+  try {
+    await query("INSERT INTO app_settings (key, value) VALUES ('session_secret', $1)", [fresh]);
+  } catch {
+    // Một tiến trình khác vừa tạo trước – dùng giá trị của nó
+  }
+  const again = await query("SELECT value FROM app_settings WHERE key = 'session_secret'");
+  setRuntimeSecret(again.rows[0].value);
+}
+
 export async function handle(req) {
+  try {
+    await (secretReady ||= ensureSecret().catch((e) => { secretReady = null; throw e; }));
+  } catch (e) {
+    console.error(e);
+    return json({ error: 'Hệ thống đang khởi động, vui lòng thử lại sau ít phút' }, 503);
+  }
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api/, '') || '/';
   for (const r of routes) {

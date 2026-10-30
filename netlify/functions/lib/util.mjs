@@ -1,10 +1,15 @@
 import crypto from 'node:crypto';
 
+// Khoá ký phiên: lấy từ biến môi trường APP_SECRET nếu có, nếu không thì
+// tự tạo một lần và lưu trong bảng app_settings (xem ensureSecret trong app.mjs).
 const SECRET = () => {
-  const s = process.env.APP_SECRET;
-  if (!s && !process.env.LOCAL_SQLITE) throw new Error('Thiếu biến môi trường APP_SECRET');
-  return s || 'local-dev-secret';
+  const s = process.env.APP_SECRET || globalThis.__RQ_SECRET;
+  if (!s) throw new Error('Chưa khởi tạo khoá bảo mật');
+  return s;
 };
+export function setRuntimeSecret(s) {
+  globalThis.__RQ_SECRET = s;
+}
 
 export const now = () => Date.now();
 export const newId = (prefix = '') => prefix + crypto.randomBytes(9).toString('base64url');

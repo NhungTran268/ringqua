@@ -68,12 +68,11 @@ function renderStage() {
     return;
   }
   renderWins();
-  if (!session) return renderJoin(stage);
   stage.innerHTML = `
-    <div class="center" style="margin:6px 0 4px"><span class="plays-left">Bạn còn <b id="left">${session.playsLeft}</b> lượt chơi</span></div>
+    <div class="center" style="margin:6px 0 4px" id="status"></div>
     <div id="game"></div>
-    <p class="center" style="margin-top:8px"><a href="#" id="switch" class="muted" style="font-size:13px">Không phải bạn? Đổi số điện thoại</a></p>`;
-  document.getElementById('switch').onclick = (e) => { e.preventDefault(); session = null; sessionStorage.removeItem(storeKey); renderStage(); };
+    <p class="center" style="margin-top:8px" id="switchbox"></p>`;
+  renderStatus();
   renderGame(C.gameType, document.getElementById('game'), {
     prizes: C.prizes,
     theme: { primaryColor: C.config.primaryColor, accent: '#ffd25e' },
@@ -81,34 +80,61 @@ function renderStage() {
   });
 }
 
-function renderJoin(stage) {
-  const f = C.config.fields || {};
-  stage.innerHTML = `
-    <form class="panel" id="join">
-      <h2 class="center">Nhập thông tin để nhận lượt chơi</h2>
+function renderStatus() {
+  const st = document.getElementById('status');
+  const sw = document.getElementById('switchbox');
+  if (!st) return;
+  if (!session) {
+    st.innerHTML = '<span class="plays-left">👇 Bấm chơi để nhận lượt và trúng quà</span>';
+    sw.innerHTML = '';
+    return;
+  }
+  st.innerHTML = `<span class="plays-left">Bạn còn <b id="left">${session.playsLeft}</b> lượt chơi</span>`;
+  sw.innerHTML = '<a href="#" id="switch" class="muted" style="font-size:13px">Không phải bạn? Đổi số điện thoại</a>';
+  document.getElementById('switch').onclick = (e) => { e.preventDefault(); session = null; sessionStorage.removeItem(storeKey); renderStage(); };
+}
+
+// Hiện form nhập thông tin dạng cửa sổ; trả về true nếu nhập xong, false nếu khách đóng
+function askJoin() {
+  return new Promise((resolve) => {
+    const f = C.config.fields || {};
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `<form class="modal" id="join" style="text-align:left">
+      <div class="emoji center" style="text-align:center">🎁</div>
+      <h2 class="center" style="text-align:center">Nhập thông tin để nhận lượt chơi</h2>
       ${f.name ? '<div class="field"><label>Họ và tên</label><input name="name" autocomplete="name" required maxlength="80"></div>' : ''}
       <div class="field"><label>Số điện thoại</label><input name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="09xx xxx xxx"></div>
       ${f.email ? '<div class="field"><label>Email</label><input name="email" type="email" autocomplete="email" required></div>' : ''}
       <p class="error" id="err"></p>
-      <button class="btn block" style="background:${esc(C.config.primaryColor)}">Bắt đầu chơi 🎉</button>
-      <p class="muted center" style="font-size:12px;margin:10px 0 0">Thông tin chỉ dùng để xác nhận và trao quà.</p>
+      <div class="actions">
+        <button class="btn block" style="background:${esc(C.config.primaryColor)}">Bắt đầu chơi 🎉</button>
+        <button type="button" class="btn ghost block" data-a="close">Để sau</button>
+      </div>
+      <p class="muted" style="font-size:12px;margin:10px 0 0;text-align:center">Thông tin chỉ dùng để xác nhận và trao quà.</p>
     </form>`;
-  const form = document.getElementById('join');
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = form.querySelector('button');
-    btn.disabled = true;
-    document.getElementById('err').textContent = '';
-    try {
-      const data = await api('/join', Object.fromEntries(new FormData(form)));
-      session = data;
-      sessionStorage.setItem(storeKey, JSON.stringify(session));
-      renderStage();
-    } catch (err) {
-      document.getElementById('err').textContent = err.message;
-      btn.disabled = false;
-    }
-  };
+    document.body.appendChild(bg);
+    const form = bg.querySelector('form');
+    form.querySelector('input')?.focus();
+    const close = (ok) => { bg.remove(); resolve(ok); };
+    bg.onclick = (e) => { if (e.target === bg || e.target.dataset.a === 'close') close(false); };
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('button');
+      btn.disabled = true;
+      form.querySelector('#err').textContent = '';
+      try {
+        session = await api('/join', Object.fromEntries(new FormData(form)));
+        sessionStorage.setItem(storeKey, JSON.stringify(session));
+        renderStatus();
+        renderWins();
+        close(true);
+      } catch (err) {
+        form.querySelector('#err').textContent = err.message;
+        btn.disabled = false;
+      }
+    };
+  });
 }
 
 function renderWins() {
@@ -120,6 +146,7 @@ function renderWins() {
 }
 
 async function doPlay() {
+  if (!session && !(await askJoin())) return null;
   if (session.playsLeft <= 0) {
     showModal({ title: 'Bạn đã hết lượt chơi', body: '<p class="muted">Cảm ơn bạn đã tham gia chương trình!</p>', emoji: '🙏' });
     return null;
@@ -128,7 +155,7 @@ async function doPlay() {
   try {
     result = (await api('/play', { token: session.token })).result;
   } catch (e) {
-    if (e.status === 401) { session = null; sessionStorage.removeItem(storeKey); renderStage(); }
+    if (e.status === 401) { session = null; sessionStorage.removeItem(storeKey); renderStatus(); }
     showModal({ title: e.message, emoji: '⚠️' });
     return null;
   }

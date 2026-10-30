@@ -45,7 +45,10 @@ const routes = [
   [/^#\/redeem$/, viewRedeem, true],
 ];
 async function router() {
-  const h = location.hash || '#/';
+  const [h0, q] = (location.hash || '#/').split('?');
+  const h = h0;
+  const pick = new URLSearchParams(q || '').get('game');
+  if (pick && GAMES[pick]) sessionStorage.setItem('rq_pick', pick);
   for (const [re, fn, needAuth] of routes) {
     const m = h.match(re);
     if (!m) continue;
@@ -160,12 +163,14 @@ function viewNew() {
     </form>`);
   let chosen = null;
   const nf = document.getElementById('nf');
+  const pre = sessionStorage.getItem('rq_pick');
   document.querySelectorAll('.tpl').forEach((b) => (b.onclick = () => {
     document.querySelectorAll('.tpl').forEach((x) => x.classList.toggle('on', x === b));
     chosen = b.dataset.k;
     nf.hidden = false;
     nf.name.focus();
   }));
+  if (pre) { sessionStorage.removeItem('rq_pick'); document.querySelector(`.tpl[data-k="${pre}"]`)?.click(); }
   nf.onsubmit = async (e) => {
     e.preventDefault();
     try {

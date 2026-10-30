@@ -79,6 +79,11 @@
     .final h2 { color: #fff; } .final p { opacity: .92; font-size: 18px; }
     footer { padding: 40px 0; color: var(--muted); font-size: 14px; }
     footer .in { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+
+    a.card { display: block; text-decoration: none; color: inherit; transition: transform .15s, box-shadow .15s; }
+    a.card:hover { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(20,30,60,.14); }
+    .game-card .try { display: inline-block; margin-top: 10px; color: var(--brand-dark); font-weight: 700; font-size: 14px; }
+    .game-card:hover .try { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -94,7 +99,7 @@
       <span class="pill">🎯 Nền tảng minigame marketing cho doanh nghiệp Việt</span>
       <h1>Biến khách ghé qua thành <em>khách hàng trung thành</em></h1>
       <p class="lead">Tạo vòng quay may mắn, lật thẻ, cào trúng thưởng, mở hộp quà chỉ trong 5 phút. Thu số điện thoại khách hàng, kiểm soát quà tặng chặt chẽ – không cần biết lập trình.</p>
-      <div class="cta"><a class="btn" href="/app#/register">Tạo game miễn phí →</a><a class="btn ghost" href="#how">Xem cách hoạt động</a></div>
+      <div class="cta"><a class="btn" href="/app#/register">Tạo game miễn phí →</a><a class="btn ghost" href="/demo/wheel">🎡 Chơi thử ngay</a></div>
       <div class="ticks"><span>✓ Không cần thẻ thanh toán</span><span>✓ Chạy mượt trên điện thoại</span><span>✓ Có mã QR in tại quầy</span></div>
     </div>
     <div class="hero-art">
@@ -109,10 +114,10 @@
     <h2>4 mẫu game được yêu thích nhất</h2>
     <p class="lead">Đổi màu, logo, quà tặng theo thương hiệu của bạn. Phù hợp sale, khai trương, Tết, Trung thu, Noel…</p>
     <div class="games" style="text-align:left">
-      <div class="card game-card"><div class="art" style="background:linear-gradient(135deg,#ffe3df,#ffd0a8)">🎡</div><div class="t"><h3>Vòng quay may mắn</h3><p>Kinh điển, kích thích, hợp mọi chương trình khuyến mãi.</p></div></div>
-      <div class="card game-card"><div class="art" style="background:linear-gradient(135deg,#e5e0ff,#cfe3ff)">🃏</div><div class="t"><h3>Lật thẻ trúng quà</h3><p>Khách chọn 1 trong 9 thẻ bí ẩn – hồi hộp đến phút chót.</p></div></div>
-      <div class="card game-card"><div class="art" style="background:linear-gradient(135deg,#e2f6ee,#d6f0ff)">🎟️</div><div class="t"><h3>Cào trúng thưởng</h3><p>Cảm giác cào thẻ thật ngay trên màn hình điện thoại.</p></div></div>
-      <div class="card game-card"><div class="art" style="background:linear-gradient(135deg,#fff1c7,#ffd9ec)">🎁</div><div class="t"><h3>Mở hộp quà</h3><p>Chọn hộp quà may mắn, mở ra là có bất ngờ.</p></div></div>
+      <a class="card game-card" href="/demo/wheel"><div class="art" style="background:linear-gradient(135deg,#ffe3df,#ffd0a8)">🎡</div><div class="t"><h3>Vòng quay may mắn</h3><p>Kinh điển, kích thích, hợp mọi chương trình khuyến mãi.</p><span class="try">Chơi thử ngay →</span></div></a>
+      <a class="card game-card" href="/demo/flip"><div class="art" style="background:linear-gradient(135deg,#e5e0ff,#cfe3ff)">🃏</div><div class="t"><h3>Lật thẻ trúng quà</h3><p>Khách chọn 1 trong 9 thẻ bí ẩn – hồi hộp đến phút chót.</p><span class="try">Chơi thử ngay →</span></div></a>
+      <a class="card game-card" href="/demo/scratch"><div class="art" style="background:linear-gradient(135deg,#e2f6ee,#d6f0ff)">🎟️</div><div class="t"><h3>Cào trúng thưởng</h3><p>Cảm giác cào thẻ thật ngay trên màn hình điện thoại.</p><span class="try">Chơi thử ngay →</span></div></a>
+      <a class="card game-card" href="/demo/giftbox"><div class="art" style="background:linear-gradient(135deg,#fff1c7,#ffd9ec)">🎁</div><div class="t"><h3>Mở hộp quà</h3><p>Chọn hộp quà may mắn, mở ra là có bất ngờ.</p><span class="try">Chơi thử ngay →</span></div></a>
     </div>
   </div></section>
 
@@ -120,12 +125,12 @@
     <div class="eyebrow">Tính năng</div>
     <h2>Mọi thứ cần cho một chiến dịch minigame</h2>
     <div class="feats" style="text-align:left">
-      <div class="card feat"><div class="ic">🎨</div><h3>Thiết kế theo thương hiệu</h3><p>Logo, màu sắc, banner, lời chúc, thể lệ – sửa xong xem trước ngay trên khung điện thoại.</p></div>
-      <div class="card feat"><div class="ic">🎯</div><h3>Kiểm soát quà tặng</h3><p>Đặt số lượng và tỉ lệ trúng từng quà (kể cả 0%). Hết quà tự dừng phát – không bao giờ phát vượt ngân sách.</p></div>
-      <div class="card feat"><div class="ic">📇</div><h3>Thu thập data khách hàng</h3><p>Họ tên, số điện thoại, email. Tải về Excel một chạm để chăm sóc, remarketing.</p></div>
-      <div class="card feat"><div class="ic">🛡️</div><h3>Chống gian lận</h3><p>Giới hạn lượt chơi theo số điện thoại. Kết quả quyết định trên máy chủ, không thể hack từ trình duyệt.</p></div>
-      <div class="card feat"><div class="ic">🎫</div><h3>Mã nhận quà duy nhất</h3><p>Mỗi người trúng nhận một mã riêng. Nhân viên kiểm tra và xác nhận trao quà – mỗi mã chỉ dùng 1 lần.</p></div>
-      <div class="card feat"><div class="ic">⏰</div><h3>Hẹn giờ chương trình</h3><p>Đặt thời gian bắt đầu, kết thúc. Tạm dừng hoặc kết thúc bất cứ lúc nào.</p></div>
+      <a class="card feat" href="/app#/register"><div class="ic">🎨</div><h3>Thiết kế theo thương hiệu</h3><p>Logo, màu sắc, banner, lời chúc, thể lệ – sửa xong xem trước ngay trên khung điện thoại.</p></a>
+      <a class="card feat" href="/app#/register"><div class="ic">🎯</div><h3>Kiểm soát quà tặng</h3><p>Đặt số lượng và tỉ lệ trúng từng quà (kể cả 0%). Hết quà tự dừng phát – không bao giờ phát vượt ngân sách.</p></a>
+      <a class="card feat" href="/app#/register"><div class="ic">📇</div><h3>Thu thập data khách hàng</h3><p>Họ tên, số điện thoại, email. Tải về Excel một chạm để chăm sóc, remarketing.</p></a>
+      <a class="card feat" href="/app#/register"><div class="ic">🛡️</div><h3>Chống gian lận</h3><p>Giới hạn lượt chơi theo số điện thoại. Kết quả quyết định trên máy chủ, không thể hack từ trình duyệt.</p></a>
+      <a class="card feat" href="/app#/register"><div class="ic">🎫</div><h3>Mã nhận quà duy nhất</h3><p>Mỗi người trúng nhận một mã riêng. Nhân viên kiểm tra và xác nhận trao quà – mỗi mã chỉ dùng 1 lần.</p></a>
+      <a class="card feat" href="/app#/register"><div class="ic">⏰</div><h3>Hẹn giờ chương trình</h3><p>Đặt thời gian bắt đầu, kết thúc. Tạm dừng hoặc kết thúc bất cứ lúc nào.</p></a>
     </div>
   </div></section>
 
@@ -133,10 +138,10 @@
     <div class="eyebrow">Cách hoạt động</div>
     <h2>Lên sóng chỉ với 4 bước</h2>
     <div class="steps" style="text-align:left">
-      <div class="card step"><h3>Chọn mẫu game</h3><p>Vòng quay, lật thẻ, cào hay hộp quà.</p></div>
-      <div class="card step"><h3>Cài đặt quà & thương hiệu</h3><p>Thêm quà, số lượng, tỉ lệ trúng, logo, màu sắc.</p></div>
-      <div class="card step"><h3>Chia sẻ cho khách</h3><p>Gửi link, in mã QR hoặc nhúng vào website.</p></div>
-      <div class="card step"><h3>Thu data & trao quà</h3><p>Theo dõi kết quả, xuất Excel, xác nhận trao quà.</p></div>
+      <a class="card step" href="/app#/register"><h3>Chọn mẫu game</h3><p>Vòng quay, lật thẻ, cào hay hộp quà.</p></a>
+      <a class="card step" href="/app#/register"><h3>Cài đặt quà & thương hiệu</h3><p>Thêm quà, số lượng, tỉ lệ trúng, logo, màu sắc.</p></a>
+      <a class="card step" href="/app#/register"><h3>Chia sẻ cho khách</h3><p>Gửi link, in mã QR hoặc nhúng vào website.</p></a>
+      <a class="card step" href="/app#/register"><h3>Thu data & trao quà</h3><p>Theo dõi kết quả, xuất Excel, xác nhận trao quà.</p></a>
     </div>
     <div class="channels"><span>🔗 Link riêng</span><span>📱 Mã QR tại cửa hàng</span><span>💬 Zalo / Messenger</span><span>📘 Fanpage Facebook</span><span>🌐 Nhúng website</span><span>✉️ SMS</span></div>
   </div></section>

@@ -22,6 +22,7 @@ http.createServer(async (req, res) => {
   }
   let p = url.pathname;
   if (p.startsWith('/play/')) p = '/play.html';
+  else if (p.startsWith('/demo/')) p = '/demo.html';
   else if (p === '/app' || p.startsWith('/app/')) p = '/app.html';
   else if (p.endsWith('/')) p += 'index.html';
   const file = path.join(PUBLIC, path.normalize(p));

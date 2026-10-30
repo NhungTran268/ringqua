@@ -130,10 +130,13 @@ const DEFAULT_CONFIG = {
   endAt: null,
 };
 
+// Ảnh hợp lệ: link http(s) hoặc ảnh đã tải lên hệ thống
+const okImg = (u) => /^https?:\/\//.test(u || '') || /^\/api\/img\/[A-Za-z0-9_-]+$/.test(u || '');
+
 function cleanConfig(input = {}, base = DEFAULT_CONFIG) {
   const c = { ...base };
   for (const k of ['title', 'subtitle', 'rules', 'loseText', 'winText', 'redeemInstruction']) if (k in input) c[k] = str(input[k], 2000);
-  for (const k of ['logoUrl', 'bannerUrl']) if (k in input) c[k] = /^https?:\/\//.test(input[k] || '') ? str(input[k], 500) : '';
+  for (const k of ['logoUrl', 'bannerUrl']) if (k in input) c[k] = okImg(input[k]) ? str(input[k], 500) : '';
   for (const k of ['primaryColor', 'bgColor']) if (/^#[0-9a-fA-F]{6}$/.test(input[k] || '')) c[k] = input[k];
   if (input.fields) c.fields = { name: !!input.fields.name, email: !!input.fields.email };
   if ('playsPerPlayer' in input) c.playsPerPlayer = Math.min(100, Math.max(1, parseInt(input.playsPerPlayer, 10) || 1));
@@ -147,7 +150,7 @@ function cleanPrizes(list) {
   const out = list.map((p, i) => ({
     id: p.id ? str(p.id, 40) : null,
     name: str(p.name, 80),
-    imageUrl: /^https?:\/\//.test(p.imageUrl || '') ? str(p.imageUrl, 500) : '',
+    imageUrl: okImg(p.imageUrl) ? str(p.imageUrl, 500) : '',
     quantity: Math.max(0, parseInt(p.quantity, 10) || 0),
     chance: Math.min(100, Math.max(0, parseInt(p.chance, 10) || 0)),
     sort: i,
@@ -479,6 +482,29 @@ route('POST', '/public/campaigns/:slug/play', async ({ req, params }) => {
     return { win: !!won, prizeId: won?.id || null, prize: won?.name || null, imageUrl: won?.image_url || '', code, playsLeft: cfg.playsPerPlayer - usedN - 1 };
   });
   return json({ result });
+});
+
+// ---------------- Ảnh tải lên ----------------
+const IMG_TYPES = { 'image/jpeg': 1, 'image/png': 1, 'image/webp': 1, 'image/gif': 1 };
+route('POST', '/images', async ({ req }) => {
+  const a = await requireAccount(req);
+  const b = await readJson(req);
+  const m = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(b.dataUrl || ''));
+  if (!m || !IMG_TYPES[m[1]]) throw new HttpError(400, 'Chỉ nhận ảnh JPG, PNG, WEBP hoặc GIF');
+  const size = Math.floor((m[2].length * 3) / 4);
+  if (size > 1_500_000) throw new HttpError(400, 'Ảnh quá lớn (tối đa 1,5MB)');
+  const { rows } = await query('SELECT COUNT(*) AS n FROM images WHERE account_id = $1', [a.id]);
+  if (Number(rows[0].n) >= 300) throw new HttpError(403, 'Bạn đã tải lên quá nhiều ảnh');
+  const id = newId('i_');
+  await query('INSERT INTO images (id, account_id, mime, data, size, created_at) VALUES ($1,$2,$3,$4,$5,$6)', [id, a.id, m[1], m[2], size, now()]);
+  return json({ url: `/api/img/${id}` }, 201);
+});
+route('GET', '/img/:id', async ({ params }) => {
+  const { rows } = await query('SELECT mime, data FROM images WHERE id = $1', [params.id]);
+  if (!rows[0]) return new Response('Không tìm thấy ảnh', { status: 404 });
+  return new Response(Buffer.from(rows[0].data, 'base64'), {
+    headers: { 'content-type': rows[0].mime, 'cache-control': 'public, max-age=31536000, immutable' },
+  });
 });
 
 route('GET', '/health', async () => {

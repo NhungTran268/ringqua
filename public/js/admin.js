@@ -1,4 +1,5 @@
 // Trang quản trị cho doanh nghiệp (SPA, điều hướng bằng #hash)
+import qrcode from './vendor/qrcode.js';
 const app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const fmtTime = (t) => (t ? new Date(t).toLocaleString('vi-VN') : '');
@@ -33,6 +34,96 @@ function toast(msg) {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2800);
+}
+
+// ---------------- Ảnh: chọn file → thu nhỏ → tải lên ----------------
+function pickFile() {
+  return new Promise((resolve) => {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    inp.onchange = () => resolve(inp.files[0] || null);
+    inp.click();
+  });
+}
+async function shrink(file, maxSide) {
+  if (file.type === 'image/gif' && file.size < 1_000_000) return readAsDataUrl(file);
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error('Không đọc được ảnh này')); i.src = url; });
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(img.naturalWidth * scale);
+    cv.height = Math.round(img.naturalHeight * scale);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    let out = cv.toDataURL('image/webp', 0.86);
+    if (!out.startsWith('data:image/webp')) out = file.type === 'image/png' ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.86);
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+const readAsDataUrl = (f) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(f); });
+async function uploadImage(maxSide = 1000) {
+  const file = await pickFile();
+  if (!file) return null;
+  if (file.size > 15_000_000) { toast('Ảnh quá lớn, hãy chọn ảnh dưới 15MB'); return null; }
+  toast('Đang tải ảnh lên…');
+  try {
+    const dataUrl = await shrink(file, maxSide);
+    const { url } = await api('/images', { method: 'POST', body: { dataUrl } });
+    toast('Đã tải ảnh lên');
+    return url;
+  } catch (e) { toast(e.message); return null; }
+}
+// Ô chọn ảnh dùng trong form: input ẩn giữ đường dẫn + ảnh xem trước + nút tải lên/xoá
+function imageField(name, label, value, hint, maxSide) {
+  return `<div class="field img-field" data-max="${maxSide}"><label>${label}</label>
+    <input type="hidden" name="${name}" value="${esc(value)}">
+    <div class="img-pick">
+      <div class="img-thumb">${value ? `<img src="${esc(value)}" alt="">` : '<span>Chưa có ảnh</span>'}</div>
+      <div class="img-btns"><button type="button" class="btn small" data-up>📷 Tải ảnh lên</button>
+        <button type="button" class="btn ghost small" data-rm ${value ? '' : 'hidden'}>Xoá ảnh</button></div>
+    </div>${hint ? `<span class="hint">${hint}</span>` : ''}</div>`;
+}
+function bindImageFields(root, onChange) {
+  root.querySelectorAll('.img-field').forEach((f) => {
+    const inp = f.querySelector('input[type=hidden]');
+    const set = (v) => {
+      inp.value = v || '';
+      f.querySelector('.img-thumb').innerHTML = v ? `<img src="${esc(v)}" alt="">` : '<span>Chưa có ảnh</span>';
+      f.querySelector('[data-rm]').hidden = !v;
+      onChange?.();
+    };
+    f.querySelector('[data-up]').onclick = async () => { const u = await uploadImage(+f.dataset.max || 1000); if (u) set(u); };
+    f.querySelector('[data-rm]').onclick = () => set('');
+  });
+}
+
+// ---------------- Mã QR (tạo ngay trên trình duyệt) ----------------
+function drawQR(canvas, text, { size = 1000, title = '', sub = '' } = {}) {
+  const q = qrcode(0, 'M');
+  q.addData(text);
+  q.make();
+  const n = q.getModuleCount();
+  const pad = 4;
+  const cell = Math.floor(size / (n + pad * 2));
+  const qrPx = cell * (n + pad * 2);
+  const extra = title ? Math.round(qrPx * 0.2) : 0;
+  canvas.width = qrPx;
+  canvas.height = qrPx + extra;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) ctx.fillRect((c + pad) * cell, (r + pad) * cell, cell, cell);
+  if (title) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1d2433';
+    ctx.font = `700 ${Math.round(qrPx * 0.055)}px "Be Vietnam Pro", Arial, sans-serif`;
+    ctx.fillText(title.slice(0, 40), qrPx / 2, qrPx + extra * 0.25);
+    ctx.fillStyle = '#667085';
+    ctx.font = `500 ${Math.round(qrPx * 0.032)}px "Be Vietnam Pro", Arial, sans-serif`;
+    ctx.fillText(sub.slice(0, 70), qrPx / 2, qrPx + extra * 0.62);
+  }
 }
 
 // ---------------- Router ----------------
@@ -243,8 +334,10 @@ function paneDesign(pane, c, save) {
         <div class="field"><label>Màu chủ đạo</label><div class="color-row"><input type="color" name="primaryColor" value="${esc(g.primaryColor)}"><span class="muted">Nút, vòng quay, tiêu đề</span></div></div>
         <div class="field"><label>Màu nền</label><div class="color-row"><input type="color" name="bgColor" value="${esc(g.bgColor)}"><span class="muted">Nền trang game</span></div></div>
       </div>
-      <div class="field"><label>Link ảnh logo</label><input name="logoUrl" value="${esc(g.logoUrl)}" placeholder="https://..."><span class="hint">Dán đường dẫn ảnh logo (PNG nền trong suốt là đẹp nhất)</span></div>
-      <div class="field"><label>Link ảnh banner (tuỳ chọn)</label><input name="bannerUrl" value="${esc(g.bannerUrl)}" placeholder="https://..."></div>
+      <div class="row">
+        ${imageField('logoUrl', 'Logo', g.logoUrl, 'PNG nền trong suốt là đẹp nhất', 600)}
+        ${imageField('bannerUrl', 'Ảnh banner (tuỳ chọn)', g.bannerUrl, 'Ảnh ngang, hiện dưới tiêu đề', 1400)}
+      </div>
     </div>
     <div class="card section"><h2>Thu thập thông tin & luật chơi</h2>
       <label class="check"><input type="checkbox" checked disabled> Số điện thoại (bắt buộc – dùng để chống chơi trùng)</label>
@@ -260,6 +353,7 @@ function paneDesign(pane, c, save) {
     <div class="savebar"><span class="grow">Thay đổi sẽ hiện ngay ở khung xem trước sau khi lưu.</span><button class="btn">Lưu thay đổi</button></div>
   </form>`;
   const f = document.getElementById('df');
+  bindImageFields(f);
   f.onsubmit = async (e) => {
     e.preventDefault();
     const v = Object.fromEntries(new FormData(f));
@@ -291,7 +385,10 @@ function panePrizes(pane, c, save, reload) {
           <td><input class="num" data-k="chance" type="number" min="0" max="100" value="${p.chance}"></td>
           <td class="left">${p.id ? `${fmtNum(p.remaining)} / ${fmtNum(p.quantity)}` : 'mới'}</td>
           <td><button class="rm" data-rm="${i}" title="Xoá">✕</button></td></tr>
-          <tr data-i="${i}"><td colspan="5" style="padding-top:0"><input data-k="imageUrl" value="${esc(p.imageUrl)}" placeholder="Link ảnh quà (tuỳ chọn)" style="font-size:12px;padding:6px 10px"></td></tr>`).join('')}
+          <tr data-i="${i}"><td colspan="5" style="padding-top:0"><div class="prize-img-row">
+            <div class="img-thumb small">${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : '<span>🎁</span>'}</div>
+            <button type="button" class="btn ghost small" data-pimg="${i}">📷 ${p.imageUrl ? 'Đổi ảnh quà' : 'Thêm ảnh quà'}</button>
+            ${p.imageUrl ? `<button type="button" class="btn ghost small" data-pimgrm="${i}">Xoá ảnh</button>` : ''}</div></td></tr>`).join('')}
         </tbody></table>
         <button class="btn ghost small" id="add" style="margin-top:10px" ${prizes.length >= 12 ? 'disabled' : ''}>+ Thêm quà</button>
         <div class="chance-bar">${prizes.map((p, i) => `<div style="width:${Math.min(100, Number(p.chance) || 0)}%;background:${PRIZE_COLORS[i % 12]}" title="${esc(p.name)}"></div>`).join('')}</div>
@@ -309,6 +406,8 @@ function panePrizes(pane, c, save, reload) {
       }
     }));
     pane.querySelectorAll('[data-rm]').forEach((b) => (b.onclick = () => { prizes.splice(+b.dataset.rm, 1); draw(); }));
+    pane.querySelectorAll('[data-pimg]').forEach((b) => (b.onclick = async () => { const u = await uploadImage(500); if (u) { prizes[+b.dataset.pimg].imageUrl = u; draw(); } }));
+    pane.querySelectorAll('[data-pimgrm]').forEach((b) => (b.onclick = () => { prizes[+b.dataset.pimgrm].imageUrl = ''; draw(); }));
     document.getElementById('add').onclick = () => { prizes.push({ name: '', quantity: 10, chance: 5, imageUrl: '' }); draw(); };
     document.getElementById('sv').onclick = async () => {
       try { const nc = await save({ prizes }); prizes = nc.prizes.map((p) => ({ ...p })); draw(); } catch (err) { toast(err.message); }
@@ -339,9 +438,11 @@ function paneShare(pane, c, save, reload) {
           <div class="field"><label>Nhúng vào website (dán mã này vào trang của bạn)</label>
             <div class="copy-row"><input readonly value="${esc(embed)}" id="emb"><button class="btn small" data-copy="emb">Sao chép</button></div></div>
         </div>
-        <div class="qr"><img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=12&data=${encodeURIComponent(link)}">
+        <div class="qr"><canvas id="qrc" class="qr-canvas"></canvas>
           <p class="muted" style="font-size:12px">In mã QR đặt tại quầy, bàn ăn, túi hàng…</p>
-          <a class="btn ghost small" download="qr-${esc(c.slug)}.png" href="https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&margin=24&data=${encodeURIComponent(link)}" target="_blank">Tải QR khổ lớn</a></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+            <button type="button" class="btn small" id="qrdl">⬇ Tải ảnh QR (PNG)</button>
+            <button type="button" class="btn ghost small" id="qrdl2">⬇ QR kèm tên chương trình</button></div></div>
       </div>
     </div>
     <div class="card section"><h2>Vùng nguy hiểm</h2>
@@ -351,6 +452,21 @@ function paneShare(pane, c, save, reload) {
   pane.querySelectorAll('[data-s]').forEach((b) => (b.onclick = async () => {
     try { await save({ status: b.dataset.s }, b.dataset.s === 'active' ? 'Đã xuất bản! Khách hàng có thể chơi ngay.' : 'Đã cập nhật trạng thái'); reload(); } catch (err) { toast(err.message); }
   }));
+  drawQR(document.getElementById('qrc'), link, { size: 360 });
+  const dl = (withTitle) => {
+    const cv = document.createElement('canvas');
+    drawQR(cv, link, { size: 1200, title: withTitle ? (c.config.title || c.name) : '', sub: withTitle ? 'Quét mã để chơi và nhận quà' : '' });
+    cv.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `qr-${c.slug}${withTitle ? '-in' : ''}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast('Đã tải ảnh QR về máy');
+    }, 'image/png');
+  };
+  document.getElementById('qrdl').onclick = () => dl(false);
+  document.getElementById('qrdl2').onclick = () => dl(true);
   pane.querySelectorAll('[data-copy]').forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(document.getElementById(b.dataset.copy).value); toast('Đã sao chép'); }));
   document.getElementById('saveslug').onclick = async () => {
     try { await save({ slug: document.getElementById('slug').value }, 'Đã đổi link'); reload(); } catch (err) { toast(err.message); }

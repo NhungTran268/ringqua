@@ -1,0 +1,22 @@
+[build]
+  publish = "public"
+  command = "echo 'Không cần build'"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/play/*"
+  to = "/play.html"
+  status = 200
+
+[[redirects]]
+  from = "/app/*"
+  to = "/app.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
